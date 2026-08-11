@@ -48,12 +48,20 @@ async function enter(){
   document.getElementById("board").style.display = "block";
   document.getElementById("danger").style.display = "block";
   renderBoard(await res.json());
+  // Keep the list current while the page sits open during an event.
+  setInterval(loadBoard, 5000);
 }
 
+// Called on a timer, so failures stay quiet — a dropped poll just means this
+// refresh is skipped and the next one tries again.
 async function loadBoard(){
-  var res = await fetch("/api/admin/players", { headers: authHeaders() });
-  if(!res.ok){ alert("Session expired, reload the page"); return; }
-  renderBoard(await res.json());
+  try {
+    var res = await fetch("/api/admin/players", { headers: authHeaders() });
+    if(!res.ok) return;
+    renderBoard(await res.json());
+  } catch (e) {
+    /* offline or transient; the next poll will pick it up */
+  }
 }
 
 function renderBoard(data){

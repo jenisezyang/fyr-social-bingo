@@ -98,15 +98,27 @@ function closeModal(){ overlay.className = "overlay"; activeIndex = null; }
 
 document.getElementById("save-btn").addEventListener("click", async function(){
   if(activeIndex === null) return;
+  // Capture the square before closeModal() clears activeIndex, otherwise the
+  // request below sends squareIndex: null and the server rejects the save.
+  var idx = activeIndex;
   var val = nameInput.value.trim();
-  answers[activeIndex] = val;
+  var previous = answers[idx];
+  answers[idx] = val;
   render();
   closeModal();
-  await fetch("/api/card/" + playerId, {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ squareIndex: activeIndex, matchedName: val })
-  });
+  try {
+    var res = await fetch("/api/card/" + playerId, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ squareIndex: idx, matchedName: val })
+    });
+    if(!res.ok) throw new Error("save rejected");
+  } catch (e) {
+    // Put the square back so the card never shows something the server doesn't have.
+    answers[idx] = previous;
+    render();
+    alert("Couldn't save that square — check your connection and try again.");
+  }
 });
 document.getElementById("cancel-btn").addEventListener("click", closeModal);
 nameInput.addEventListener("keydown", function(e){
