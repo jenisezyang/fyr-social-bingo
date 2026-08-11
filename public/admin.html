@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — FYR social bingo</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Admin</h1>
+    <p>Click a player to see their full card and answers.</p>
+  </header>
+  <div id="gate">
+    <input type="password" id="pw-input" placeholder="Admin password">
+    <button class="primary" id="pw-btn">Enter</button>
+  </div>
+  <div id="board" style="display:none;"></div>
+  <div id="detail" style="display:none;"></div>
+</div>
+<script>
+var adminPassword = "";
+
+document.getElementById("pw-btn").addEventListener("click", async function(){
+  adminPassword = document.getElementById("pw-input").value;
+  var ok = await tryLoadBoard();
+  if(ok){
+    document.getElementById("gate").style.display = "none";
+    document.getElementById("board").style.display = "block";
+  } else {
+    alert("Wrong password");
+  }
+});
+
+async function tryLoadBoard(){
+  var res = await fetch("/api/leaderboard");
+  var data = await res.json();
+  var board = document.getElementById("board");
+  board.innerHTML = "";
+  data.forEach(function(p, i){
+    var row = document.createElement("div");
+    row.className = "board-row clickable" + (i === 0 && p.filled > 1 ? " top" : "");
+    row.innerHTML = "<span class='rank'>" + (i+1) + "</span><span class='name'>" + p.name + "</span><span class='score'>" + p.filled + " / 25</span>";
+    row.addEventListener("click", function(){ loadDetail(p.id); });
+    board.appendChild(row);
+  });
+  return true;
+}
+
+async function loadDetail(id){
+  var res = await fetch("/api/admin/player/" + id, {
+    headers: { "x-admin-password": adminPassword }
+  });
+  if(!res.ok){ alert("Unauthorized"); return; }
+  var data = await res.json();
+  var detail = document.getElementById("detail");
+  detail.style.display = "block";
+  var html = "<h2 style='font-size:16px;margin:16px 0 8px;'>" + data.player.name + "'s card</h2>";
+  html += "<div class='grid'>";
+  for(var i=0;i<25;i++){
+    if(i===12){
+      html += "<div class='cell free'>FREE</div>";
+    } else {
+      var val = data.answers[i];
+      html += "<div class='cell" + (val ? " filled" : "") + "'>";
+      html += "<div class='prompt'>" + data.card[i] + "</div>";
+      html += "<div class='name" + (val ? "" : " empty") + "'>" + (val || "not filled") + "</div>";
+      html += "</div>";
+    }
+  }
+  html += "</div>";
+  detail.innerHTML = html;
+}
+</script>
+</body>
+</html>

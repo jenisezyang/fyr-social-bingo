@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FYR social bingo</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>FYR social bingo</h1>
+    <p>Strike up a conversation, find someone who matches a square, then write their name in it. First to blackout wins. One square per person, no repeats.</p>
+  </header>
+  <div class="status">
+    <span id="count">0 / 25 filled</span>
+    <span id="player-name"></span>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="banner" id="banner">Blackout! Show your card to an exec.</div>
+  <p class="link-row"><a href="/leaderboard.html">View live leaderboard</a></p>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <p id="modal-prompt"></p>
+    <input type="text" id="name-input" placeholder="Their name" maxlength="30">
+    <div class="modal-actions">
+      <button class="btn-cancel" id="cancel-btn">Cancel</button>
+      <button class="btn-save" id="save-btn">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var playerId = localStorage.getItem("fyr_player_id");
+if(!playerId){ window.location.href = "/"; }
+
+var card = [];
+var answers = Array(25).fill("");
+var activeIndex = null;
+
+var grid = document.getElementById("grid");
+var overlay = document.getElementById("overlay");
+var modalPrompt = document.getElementById("modal-prompt");
+var nameInput = document.getElementById("name-input");
+var countEl = document.getElementById("count");
+var banner = document.getElementById("banner");
+
+async function load(){
+  var res = await fetch("/api/card/" + playerId);
+  if(!res.ok){ window.location.href = "/"; return; }
+  var data = await res.json();
+  card = data.card;
+  answers = data.answers;
+  document.getElementById("player-name").textContent = data.player.name;
+  render();
+}
+
+function render(){
+  grid.innerHTML = "";
+  var filled = 0;
+  for(var i=0;i<25;i++){
+    var cell = document.createElement("div");
+    cell.className = "cell";
+    if(i===12){
+      cell.className += " free";
+      cell.textContent = "FREE";
+      filled++;
+    } else {
+      if(answers[i]){ cell.className += " filled"; filled++; }
+      var p = document.createElement("div");
+      p.className = "prompt";
+      p.textContent = card[i];
+      var n = document.createElement("div");
+      n.className = "name" + (answers[i] ? "" : " empty");
+      n.textContent = answers[i] || "tap to add name";
+      cell.appendChild(p);
+      cell.appendChild(n);
+      (function(idx){
+        cell.addEventListener("click", function(){ openModal(idx); });
+      })(i);
+    }
+    grid.appendChild(cell);
+  }
+  countEl.textContent = filled + " / 25 filled";
+  banner.className = filled === 25 ? "banner show" : "banner";
+}
+
+function openModal(idx){
+  activeIndex = idx;
+  modalPrompt.textContent = card[idx];
+  nameInput.value = answers[idx];
+  overlay.className = "overlay show";
+  setTimeout(function(){ nameInput.focus(); }, 50);
+}
+function closeModal(){ overlay.className = "overlay"; activeIndex = null; }
+
+document.getElementById("save-btn").addEventListener("click", async function(){
+  if(activeIndex === null) return;
+  var val = nameInput.value.trim();
+  answers[activeIndex] = val;
+  render();
+  closeModal();
+  await fetch("/api/card/" + playerId, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ squareIndex: activeIndex, matchedName: val })
+  });
+});
+document.getElementById("cancel-btn").addEventListener("click", closeModal);
+nameInput.addEventListener("keydown", function(e){
+  if(e.key === "Enter") document.getElementById("save-btn").click();
+});
+
+load();
+</script>
+</body>
+</html>

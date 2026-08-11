@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FYR social bingo</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>FYR social bingo</h1>
+    <p>Enter your name to get your card and join the leaderboard.</p>
+  </header>
+  <input type="text" id="name-input" placeholder="Your name" maxlength="30">
+  <button id="start-btn" class="primary">Start playing</button>
+  <p class="link-row"><a href="/leaderboard.html">View live leaderboard</a></p>
+</div>
+<script>
+document.getElementById("start-btn").addEventListener("click", async function(){
+  var name = document.getElementById("name-input").value.trim();
+  if(!name) return;
+  var res = await fetch("/api/signup", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ name: name })
+  });
+  var data = await res.json();
+  if(data.id){
+    localStorage.setItem("fyr_player_id", data.id);
+    localStorage.setItem("fyr_player_name", data.name);
+    window.location.href = "/bingo.html";
+  }
+});
+document.getElementById("name-input").addEventListener("keydown", function(e){
+  if(e.key === "Enter") document.getElementById("start-btn").click();
+});
+</script>
+</body>
+</html>
