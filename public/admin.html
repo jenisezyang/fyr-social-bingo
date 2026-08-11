@@ -18,40 +18,96 @@
   </div>
   <div id="board" style="display:none;"></div>
   <div id="detail" style="display:none;"></div>
+  <div id="danger" style="display:none;">
+    <h2 class="danger-title">Clear test data</h2>
+    <p class="danger-note">Removes every player and every answer. Use this once
+      after testing, before the first years start playing. This cannot be undone.</p>
+    <button class="danger-btn" id="reset-btn">Delete all players</button>
+  </div>
 </div>
 <script>
 var adminPassword = "";
 
-document.getElementById("pw-btn").addEventListener("click", async function(){
-  adminPassword = document.getElementById("pw-input").value;
-  var ok = await tryLoadBoard();
-  if(ok){
-    document.getElementById("gate").style.display = "none";
-    document.getElementById("board").style.display = "block";
-  } else {
-    alert("Wrong password");
-  }
+function authHeaders(){
+  return { "x-admin-password": adminPassword, "Content-Type": "application/json" };
+}
+
+document.getElementById("pw-btn").addEventListener("click", enter);
+document.getElementById("pw-input").addEventListener("keydown", function(e){
+  if(e.key === "Enter") enter();
 });
 
-async function tryLoadBoard(){
-  var res = await fetch("/api/leaderboard");
-  var data = await res.json();
+async function enter(){
+  adminPassword = document.getElementById("pw-input").value;
+  var res = await fetch("/api/admin/players", { headers: authHeaders() });
+  if(!res.ok){
+    alert("Wrong password");
+    return;
+  }
+  document.getElementById("gate").style.display = "none";
+  document.getElementById("board").style.display = "block";
+  document.getElementById("danger").style.display = "block";
+  renderBoard(await res.json());
+}
+
+async function loadBoard(){
+  var res = await fetch("/api/admin/players", { headers: authHeaders() });
+  if(!res.ok){ alert("Session expired, reload the page"); return; }
+  renderBoard(await res.json());
+}
+
+function renderBoard(data){
   var board = document.getElementById("board");
   board.innerHTML = "";
+  if(!data.length){
+    board.innerHTML = "<p class='empty-board'>No players yet.</p>";
+    return;
+  }
   data.forEach(function(p, i){
     var row = document.createElement("div");
     row.className = "board-row clickable" + (i === 0 && p.filled > 1 ? " top" : "");
-    row.innerHTML = "<span class='rank'>" + (i+1) + "</span><span class='name'>" + p.name + "</span><span class='score'>" + p.filled + " / 25</span>";
+    row.innerHTML = "<span class='rank'>" + (i+1) + "</span>" +
+      "<span class='name'></span>" +
+      "<span class='score'>" + p.filled + " / 25</span>" +
+      "<button class='row-delete' title='Delete this player'>&times;</button>";
+    row.querySelector(".name").textContent = p.name;
     row.addEventListener("click", function(){ loadDetail(p.id); });
+    row.querySelector(".row-delete").addEventListener("click", function(e){
+      e.stopPropagation();
+      deletePlayer(p.id, p.name);
+    });
     board.appendChild(row);
   });
-  return true;
 }
 
-async function loadDetail(id){
+async function deletePlayer(id, name){
+  if(!confirm("Delete " + name + " and all their answers?")) return;
   var res = await fetch("/api/admin/player/" + id, {
-    headers: { "x-admin-password": adminPassword }
+    method: "DELETE",
+    headers: authHeaders()
   });
+  if(!res.ok){ alert("Could not delete that player"); return; }
+  document.getElementById("detail").style.display = "none";
+  loadBoard();
+}
+
+document.getElementById("reset-btn").addEventListener("click", async function(){
+  var typed = prompt("This deletes EVERY player and answer.\n\nType RESET to confirm:");
+  if(typed !== "RESET") return;
+  var res = await fetch("/api/admin/reset", {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ confirm: "RESET" })
+  });
+  if(!res.ok){ alert("Reset failed"); return; }
+  var data = await res.json();
+  document.getElementById("detail").style.display = "none";
+  alert("Cleared " + data.removed + " player(s). The board is empty.");
+  loadBoard();
+});
+
+async function loadDetail(id){
+  var res = await fetch("/api/admin/player/" + id, { headers: authHeaders() });
   if(!res.ok){ alert("Unauthorized"); return; }
   var data = await res.json();
   var detail = document.getElementById("detail");

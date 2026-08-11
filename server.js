@@ -133,6 +133,57 @@ function checkAdmin(req, res, next) {
   next();
 }
 
+// Authenticated version of the leaderboard, used by the admin page so that the
+// password gate actually verifies against the server before showing anything.
+app.get("/api/admin/players", checkAdmin, (req, res) => {
+  const players = db.prepare("SELECT id, name FROM players").all();
+  const counts = db
+    .prepare(
+      "SELECT player_id, COUNT(*) as filled FROM answers GROUP BY player_id"
+    )
+    .all();
+  const countMap = {};
+  counts.forEach((c) => (countMap[c.player_id] = c.filled));
+  const board = players
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      filled: (countMap[p.id] || 0) + 1, // +1 for free space
+    }))
+    .sort((a, b) => b.filled - a.filled);
+  res.json(board);
+});
+
+const deletePlayer = db.transaction((id) => {
+  db.prepare("DELETE FROM answers WHERE player_id = ?").run(id);
+  db.prepare("DELETE FROM players WHERE id = ?").run(id);
+});
+
+app.delete("/api/admin/player/:id", checkAdmin, (req, res) => {
+  const player = db
+    .prepare("SELECT * FROM players WHERE id = ?")
+    .get(req.params.id);
+  if (!player) return res.status(404).json({ error: "Player not found" });
+  deletePlayer(req.params.id);
+  res.json({ ok: true, deleted: player.name });
+});
+
+const resetAll = db.transaction(() => {
+  db.prepare("DELETE FROM answers").run();
+  db.prepare("DELETE FROM players").run();
+});
+
+// Wipes every player and answer. Intended for clearing test runs before a real
+// event; the client requires a typed confirmation before calling this.
+app.post("/api/admin/reset", checkAdmin, (req, res) => {
+  if (req.body.confirm !== "RESET") {
+    return res.status(400).json({ error: "Confirmation phrase required" });
+  }
+  const before = db.prepare("SELECT COUNT(*) as n FROM players").get().n;
+  resetAll();
+  res.json({ ok: true, removed: before });
+});
+
 app.get("/api/admin/player/:id", checkAdmin, (req, res) => {
   const player = db
     .prepare("SELECT * FROM players WHERE id = ?")

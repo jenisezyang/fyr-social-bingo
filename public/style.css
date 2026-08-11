@@ -163,3 +163,29 @@ button.primary{
 .board-row .score{font-weight:700;color:var(--navy);}
 .board-row.top{background:var(--gold-light);border-color:var(--gold);}
 .board-row.clickable{cursor:pointer;}
+
+.board-row .row-delete{
+  background:none;
+  border:none;
+  color:#a39c7e;
+  font-size:20px;
+  line-height:1;
+  padding:0 2px 0 10px;
+  cursor:pointer;
+}
+.board-row .row-delete:hover{color:#a3341f;}
+.empty-board{font-size:13px;color:var(--navy-light);text-align:center;padding:14px 0;}
+.danger-title{font-size:14px;margin:26px 0 6px;color:#a3341f;}
+.danger-note{font-size:12px;line-height:1.5;color:var(--navy-light);margin:0 0 10px;}
+.danger-btn{
+  width:100%;
+  padding:11px;
+  border-radius:10px;
+  border:1px solid #a3341f;
+  background:none;
+  color:#a3341f;
+  font-weight:600;
+  font-size:13px;
+  cursor:pointer;
+}
+.danger-btn:hover{background:#a3341f;color:var(--cream);}
