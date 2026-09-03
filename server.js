@@ -3,7 +3,16 @@ const path = require("path");
 const Database = require("better-sqlite3");
 const { nanoid } = require("nanoid");
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "bucs2026";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+if (!ADMIN_PASSWORD) {
+  // No fallback on purpose: this repo is public, so a default password here
+  // would be a published password. Fail at boot rather than run unprotected.
+  console.error(
+    "ADMIN_PASSWORD is not set. Add it to your host's environment variables " +
+      "(Railway: your service -> Variables) and redeploy."
+  );
+  process.exit(1);
+}
 const PORT = process.env.PORT || 3000;
 
 const db = new Database(path.join(__dirname, "data.db"));
