@@ -2,6 +2,7 @@ const express = require("express");
 const path = require("path");
 const Database = require("better-sqlite3");
 const { nanoid } = require("nanoid");
+const { isBlocked } = require("./moderation");
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 if (!ADMIN_PASSWORD) {
@@ -69,6 +70,9 @@ app.use(express.static(path.join(__dirname, "public")));
 app.post("/api/signup", (req, res) => {
   const name = (req.body.name || "").trim();
   if (!name) return res.status(400).json({ error: "Name is required" });
+  if (isBlocked(name)) {
+    return res.status(400).json({ error: "Please use your real name." });
+  }
   const id = nanoid(10);
   db.prepare("INSERT INTO players (id, name, created_at) VALUES (?, ?, ?)").run(
     id,
@@ -102,6 +106,9 @@ app.post("/api/card/:playerId", (req, res) => {
   if (!player) return res.status(404).json({ error: "Player not found" });
 
   const trimmed = (matchedName || "").trim();
+  if (trimmed && isBlocked(trimmed)) {
+    return res.status(400).json({ error: "Please use their real name." });
+  }
   if (trimmed) {
     db.prepare(
       `INSERT INTO answers (player_id, square_index, prompt, matched_name, updated_at)

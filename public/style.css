@@ -189,3 +189,10 @@ button.primary{
   cursor:pointer;
 }
 .danger-btn:hover{background:#a3341f;color:var(--cream);}
+
+.form-error{
+  margin:10px 0 0;
+  font-size:13px;
+  color:#a3341f;
+  text-align:center;
+}

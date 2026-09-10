@@ -112,12 +112,17 @@ document.getElementById("save-btn").addEventListener("click", async function(){
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({ squareIndex: idx, matchedName: val })
     });
-    if(!res.ok) throw new Error("save rejected");
+    if(!res.ok){
+      var body = await res.json().catch(function(){ return {}; });
+      throw new Error(body.error || "save rejected");
+    }
   } catch (e) {
     // Put the square back so the card never shows something the server doesn't have.
     answers[idx] = previous;
     render();
-    alert("Couldn't save that square — check your connection and try again.");
+    alert(e.message === "save rejected"
+      ? "Couldn't save that square — check your connection and try again."
+      : e.message);
   }
 });
 document.getElementById("cancel-btn").addEventListener("click", closeModal);
