@@ -34,8 +34,18 @@ const TOKEN = [
   "retarded", "twat", "prick", "douche", "piss", "anal", "orgasm", "porn",
   // "fuk" is whole-word only: as a substring it would reject Fukuda, Fukushima.
   "fuk", "fack",
+  // Meme/slang names. Whole-word only: "rizz" as a substring rejects Rizzo,
+  // and "larp" as a substring rejects Larpent.
+  "rizz", "rizzler", "larp", "larps", "larped", "larping", "sixseven",
   "penis", "vagina", "boobs", "hitler", "nazi",
 ];
+
+// Phrases checked against the normalized (letters-only) string.
+const PHRASES = ["six seven", "6 7"];
+
+// Checked against the raw input, because normalize() strips digits: "67",
+// "6 7" and "6-7" all read as the same meme.
+const RAW_PATTERNS = [/(^|[^0-9])6\s*[-_.]?\s*7([^0-9]|$)/];
 
 // Collapsed form catches "f u c k" and "f-u-c-k" written to dodge the filter.
 function isBlocked(rawName) {
@@ -45,6 +55,14 @@ function isBlocked(rawName) {
 
   for (const term of SUBSTRING) {
     if (normalized.includes(term) || collapsed.includes(term)) return true;
+  }
+
+  for (const phrase of PHRASES) {
+    if (normalized.includes(phrase)) return true;
+  }
+
+  for (const pattern of RAW_PATTERNS) {
+    if (pattern.test(String(rawName))) return true;
   }
 
   const words = normalized.split(" ");
